@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>O Dia Escuro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="2 de agosto de 2027: a sequência de um eclipse solar total, do primeiro ao quarto contato.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&display=swap">
+<style>
+/* Layout: uma história de rolagem que vai do dia à noite e volta; uma fonte condensada variável que se deforma sob o cursor.
+   Mundo visual único e deliberado: a própria página controla dia e noite, então não segue o tema do sistema. */
+:root{
+  --day:#b9cddf;      /* céu de manhã */
+  --ink:#09121f;      /* texto sobre o dia */
+  --night:#05070c;    /* céu na totalidade */
+  --pearl:#ece8de;    /* coroa solar */
+  --rose:#ff5c72;     /* cromosfera, usado só em detalhes */
+  --page:var(--day);
+  --fg:var(--ink);
+  --f-display:"Anybody","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  color-scheme:light;
+}
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}
+.lenis.lenis-stopped{overflow:hidden}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+img{max-width:100%}
+body{
+  background:var(--page);color:var(--fg);
+  font-family:var(--f-serif);font-size:16px;line-height:1.5;
+  overflow-x:clip;transition:color .6s ease;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+a:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:5px;border-radius:2px}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:1440px;margin-inline:auto;padding-inline:clamp(0px,3vw,40px)}
+.mono{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;line-height:1.4}
+.display{font-family:var(--f-display);text-transform:uppercase;font-kerning:none;text-rendering:optimizeSpeed}
+
+/* grão */
+.grain{position:fixed;inset:-50%;z-index:60;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation:grain 1.2s steps(6) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-4%)}60%{transform:translate(-4%,-1%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
+
+/* carregamento */
+.loader{position:fixed;inset:0;z-index:100;background:var(--night);color:var(--pearl);
+  display:grid;place-items:center;align-content:center;gap:28px;
+  clip-path:circle(150% at 50% 50%);animation:loaderOut .01s linear 6s forwards}
+@keyframes loaderOut{to{visibility:hidden;opacity:0}}
+.loader-disc{position:relative;width:88px;height:88px}
+.loader-sun{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#fffdf6 0 55%,#ffd49a 100%);box-shadow:0 0 40px 6px rgba(255,236,200,.35)}
+.loader-moon{position:absolute;inset:-4%;border-radius:50%;background:var(--night);transform:translateX(110%)}
+.loader-count{font-family:var(--f-display);font-variation-settings:"wdth" 60,"wght" 300;font-size:clamp(3rem,10vw,6rem);line-height:1;font-variant-numeric:tabular-nums;display:flex;gap:.08em;align-items:flex-start}
+.loader-count span:last-child{font-size:.3em;margin-top:.3em;font-family:var(--f-mono)}
+.loader-note{margin:0;opacity:.55}
+
+.progress{position:fixed;left:0;right:0;top:0;height:2px;z-index:55;background:#fff;mix-blend-mode:difference;transform-origin:0 50%;transform:scaleX(0);pointer-events:none}
+/* cursor */
+.cursor{position:fixed;left:0;top:0;z-index:90;pointer-events:none;mix-blend-mode:difference;display:none}
+.cursor-ring,.cursor-dot{position:fixed;left:0;top:0;border-radius:50%;translate:-50% -50%}
+.cursor-ring{width:38px;height:38px;border:1px solid #fff;display:grid;place-items:center;color:#fff}
+.cursor-label{font-size:.58rem;letter-spacing:.14em}
+.cursor-dot{width:6px;height:6px;background:#fff}
+@media (hover:hover) and (pointer:fine){.cursor{display:block}html,a,button{cursor:none}}
+
+/* topo */
+.top{position:fixed;left:0;right:0;top:0;z-index:50;padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:18px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;color:#fff;mix-blend-mode:difference}
+.brand{font-family:var(--f-display);font-variation-settings:"wdth" 70,"wght" 800;text-transform:uppercase;font-size:1.05rem;letter-spacing:.02em}
+.top-date{position:absolute;left:50%;translate:-50% 0}
+.top-nav{display:flex;gap:clamp(14px,2.4vw,32px)}
+@media (max-width:640px){.top-date{display:none}.top-nav{gap:12px}.top-nav .mono{font-size:.62rem}}
+
+.roll{display:inline-block;overflow:hidden;line-height:1.25;vertical-align:top}
+.roll .ch{display:inline-block;text-shadow:0 1.25em currentColor;transition:transform .55s var(--ease-out);transition-delay:calc(var(--char,1) * 16ms)}
+a:hover .roll .ch,a:focus-visible .roll .ch,.roll:hover .ch{transform:translateY(-1.25em)}
+
+/* herói */
+.hero{position:relative;height:100svh;min-height:560px;background:linear-gradient(to bottom,#4f84c3,#9fbfdf 55%,#c9d9e6);color:var(--ink);overflow:hidden}
+.under{position:absolute;inset:0;pointer-events:none}
+.orbit{position:absolute;left:0;top:0;width:300px;height:300px;overflow:visible;visibility:hidden}
+.orbit text{font-family:var(--f-mono);font-size:7px;letter-spacing:.2em;text-transform:uppercase;fill:var(--ink)}
+.under-line{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:7%;margin:0;color:var(--ink);
+  font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 62,"wght" 820;font-size:clamp(2.6rem,7.4vw,7.2rem);line-height:.86;font-kerning:none}
+.under-line .ch{transform-origin:50% 100%}
+.under-line > div,.stop-name > div{padding-top:.16em;margin-top:-.16em}
+.hollow-ink{color:transparent;-webkit-text-stroke:max(1.5px,.018em) var(--ink)}
+.hero-frame{position:absolute;inset:0;background:var(--night);color:var(--pearl);
+  will-change:clip-path}
+.sky{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hero-inner{position:relative;height:100%;display:grid;grid-template-rows:auto 1fr auto;
+  padding-top:calc(86px + env(safe-area-inset-top,0px));padding-bottom:clamp(20px,4vh,44px)}
+.hero-meta{display:flex;flex-direction:column;gap:4px;justify-self:end;text-align:right;opacity:.75}
+.hero-title{--wdth:62;--wght:860;align-self:end;margin:0;font-family:var(--f-display);text-transform:uppercase;
+  font-variation-settings:"wdth" var(--wdth),"wght" var(--wght);font-weight:normal;
+  font-size:clamp(5rem,20vw,19rem);line-height:.8;letter-spacing:-.01em;white-space:nowrap;font-kerning:none}
+.hollow{color:transparent;-webkit-text-stroke:max(1.5px,.018em) var(--pearl)}
+.hero-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-top:clamp(16px,3vh,32px)}
+.hero-lede{margin:0;max-width:40ch;font-size:clamp(1.02rem,1.4vw,1.25rem);line-height:1.45;opacity:.9}
+.hero-lede strong{font-weight:500;font-style:italic}
+.btn{display:inline-flex;align-items:center;gap:14px;padding:14px 22px;border:1px solid currentColor;border-radius:999px;font-family:var(--f-mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase}
+.btn-arrow{display:inline-block;transition:transform .5s var(--ease-out)}
+.btn:hover .btn-arrow{transform:translateY(4px)}
+
+/* sequência */
+.seq{position:relative}
+.seq-stage{--stage:var(--day);--stage-ink:var(--ink);position:relative;height:100svh;min-height:560px;overflow:hidden;
+  background:var(--stage);color:var(--stage-ink);transition:color .6s ease}
+.seq-inner{position:relative;height:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto auto;
+  padding-top:calc(86px + env(safe-area-inset-top,0px));padding-bottom:clamp(20px,4vh,40px);column-gap:32px}
+.seq-eyebrow{grid-column:1;margin:0;opacity:.7}
+.hud{grid-column:2;grid-row:1 / 3;display:flex;flex-direction:column;gap:14px;text-align:right;align-self:start}
+.hud div{display:flex;flex-direction:column;gap:2px}
+.hud-k{opacity:.55}
+.hud-v{font-family:var(--f-display);font-variation-settings:"wdth" 55,"wght" 300;font-size:clamp(2rem,4.4vw,3.8rem);letter-spacing:0;line-height:1;font-variant-numeric:tabular-nums;text-transform:none}
+.seq-text{grid-column:1 / -1;grid-row:3;max-width:min(100%,62rem)}
+.seq-label{margin:0 0 14px;display:flex;gap:10px;align-items:center}
+.seq-label::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--rose)}
+.seq-title{margin:0;font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 58,"wght" 820;font-weight:normal;
+  font-size:clamp(3rem,9.6vw,9.6rem);line-height:.84;font-kerning:none}
+.seq-title .wd{perspective:600px}
+.seq-title .ch{transform-origin:50% 100%;will-change:transform}
+.seq-sub{margin:18px 0 0;max-width:46ch;font-size:clamp(1.02rem,1.35vw,1.22rem);line-height:1.45}
+.rail{grid-column:1 / -1;grid-row:4;position:relative;height:38px;margin-top:clamp(18px,3vh,30px)}
+.rail-line{position:absolute;left:0;right:0;top:0;height:1px;background:currentColor;opacity:.25}
+.rail-fill{position:absolute;left:0;right:0;top:0;height:1px;background:currentColor;transform-origin:0 50%;transform:scaleX(0)}
+.rail-mark{position:absolute;top:-4px;translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:8px}
+.rail-mark::before{content:"";width:1px;height:9px;background:currentColor}
+@media (max-width:760px){
+  .seq-inner{grid-template-columns:1fr;column-gap:0}
+  .hud{grid-column:1;grid-row:2;flex-direction:row;justify-content:space-between;text-align:left;align-self:start;margin-top:14px}
+  .hud div:last-child{display:none}
+  .seq-text{grid-row:3}
+  .hero-meta{justify-self:start;text-align:left}
+}
+
+/* segurança */
+.safety{position:relative;padding-block:clamp(80px,14vh,160px) clamp(60px,10vh,120px);overflow:hidden}
+.mq{overflow:hidden;white-space:nowrap;padding-block:.06em}
+.mq-track{display:inline-flex;align-items:center;gap:.35em;will-change:transform}
+.mq-track > span{font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 120,"wght" 880;font-size:clamp(3.2rem,10vw,9rem);line-height:1}
+.mq-track > .o{color:transparent;-webkit-text-stroke:max(1.5px,.016em) var(--fg);font-variation-settings:"wdth" 120,"wght" 500}
+.mq-track > .s{font-family:var(--f-serif);font-style:italic;font-weight:300;text-transform:none;font-variation-settings:normal;letter-spacing:-.02em}
+.mq-track > .x{font-size:clamp(1.6rem,4vw,3.6rem);color:var(--rose)}
+.safety-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);gap:24px;margin-top:clamp(56px,10vh,110px)}
+.safety-grid p{margin:0}
+.big-serif{font-size:clamp(1.7rem,3.6vw,3.3rem);line-height:1.12;letter-spacing:-.015em;font-weight:300;max-width:26ch}
+.big-serif em{font-style:italic}
+@media (max-width:760px){.safety-grid{grid-template-columns:1fr}}
+
+/* faixa */
+.faixa{position:relative}
+.faixa-pin{position:relative;height:100svh;min-height:560px;overflow:hidden;display:flex;flex-direction:column}
+.faixa-head{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-top:calc(86px + env(safe-area-inset-top,0px))}
+.faixa-head p{margin:0}
+.faixa-prog{display:flex;align-items:center;gap:12px;flex:0 1 420px}
+.faixa-line{position:relative;flex:1;height:1px;background:color-mix(in srgb,currentColor 30%,transparent)}
+.faixa-line i{position:absolute;top:50%;left:0;width:14px;height:14px;border-radius:50%;translate:-50% -50%;background:var(--fg);box-shadow:0 0 0 5px color-mix(in srgb,var(--fg) 18%,transparent)}
+.faixa-track{flex:1;display:flex;align-items:stretch;width:max-content;will-change:transform}
+.stop{position:relative;width:min(78vw,980px);flex:none;display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 clamp(20px,4vw,64px) clamp(28px,6vh,64px);border-left:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.stop:first-child{border-left:0;padding-left:max(16px,env(safe-area-inset-left,0px),4vw)}
+.stop:last-child{width:min(86vw,1100px)}
+.stop p{margin:0}
+.stop-k{opacity:.6}
+.stop-dur{font-family:var(--f-display);font-variation-settings:"wdth" 50,"wght" 200;font-size:clamp(5rem,18vw,15rem);line-height:.85;font-variant-numeric:tabular-nums;margin:10px 0 4px!important}
+.stop-name{margin:clamp(14px,3vh,28px) 0 10px;font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 110,"wght" 850;font-weight:normal;font-size:clamp(2.6rem,7vw,6.4rem);line-height:.9;white-space:nowrap;font-kerning:none}
+.stop-text{max-width:38ch;font-size:clamp(1rem,1.3vw,1.18rem)}
+.stop-intro h2{margin:0 0 20px;font-family:var(--f-serif);font-weight:300;font-style:italic;font-size:clamp(2.4rem,6vw,5.6rem);line-height:.98;letter-spacing:-.02em;max-width:12ch}
+.stop-peak .stop-dur{color:var(--pearl);text-shadow:0 0 60px rgba(255,236,200,.35)}
+
+/* o que muda */
+.muda{padding-block:clamp(90px,16vh,180px)}
+.muda-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);gap:24px;margin-bottom:clamp(40px,7vh,80px)}
+.muda-head h2{margin:0;font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 62,"wght" 820;font-weight:normal;font-size:clamp(2.6rem,7vw,6.6rem);line-height:.86;font-kerning:none}
+.muda-list{list-style:none;margin:0;padding:0}
+.muda-list li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);gap:24px;padding-block:clamp(22px,4vh,40px);border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.muda-list .mono{padding-top:.7em;opacity:.6}
+.fill{margin:0;font-size:clamp(1.7rem,4vw,3.6rem);line-height:1.08;letter-spacing:-.015em;font-weight:300;max-width:24ch}
+@media (max-width:760px){.muda-head,.muda-list li{grid-template-columns:1fr;gap:10px}.muda-list .mono{padding-top:0}}
+
+/* contagem */
+.count{position:relative;height:100svh;min-height:620px;overflow:hidden;display:grid;justify-items:center;align-content:end;text-align:center;padding-bottom:clamp(40px,9vh,96px)}
+.count::after{content:"";position:absolute;left:0;right:0;bottom:0;height:22%;background:linear-gradient(to bottom,transparent,var(--night));pointer-events:none}
+.count-inner{position:relative;z-index:1;display:grid;justify-items:center;gap:18px}
+.count-inner p{margin:0}
+.clock{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(14px,3vw,48px)}
+.clock-g{display:flex;flex-direction:column;align-items:center;gap:10px}
+.clock-d{display:flex;font-family:var(--f-display);font-variation-settings:"wdth" 50,"wght" 250;font-size:clamp(3.4rem,9vw,8.5rem);line-height:1;font-variant-numeric:tabular-nums}
+.dg{display:block;height:1em;overflow:hidden}
+.dg-col{display:flex;flex-direction:column}
+.dg-col span{height:1em;display:block}
+.count-note{max-width:34ch;font-size:clamp(1rem,1.3vw,1.2rem);font-style:italic}
+
+/* rodapé */
+.foot{padding-block:clamp(40px,8vh,90px) calc(28px + env(safe-area-inset-bottom,0px));overflow:hidden}
+.foot-word{margin:0;font-family:var(--f-display);text-transform:uppercase;font-variation-settings:"wdth" 62,"wght" 860;font-size:clamp(5rem,27vw,30rem);line-height:.78;white-space:nowrap;font-kerning:none;text-align:center}
+.foot-row{display:flex;justify-content:space-between;gap:16px 32px;flex-wrap:wrap;margin-top:clamp(28px,5vh,56px);padding-top:20px;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent)}
+.foot-row p{margin:0;max-width:44ch}
+.foot-row a{border-bottom:1px solid color-mix(in srgb,currentColor 40%,transparent)}
+
+@media (prefers-reduced-motion:reduce){.grain{animation:none}}
+</style>
+
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader-disc"><span class="loader-sun"></span><span class="loader-moon" id="loaderMoon"></span></div>
+  <div class="loader-count"><span id="loaderNum">000</span><span>%</span></div>
+  <p class="loader-note mono">calculando a sombra</p>
+</div>
+<div class="grain" aria-hidden="true"></div>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<div class="cursor" aria-hidden="true"><span class="cursor-ring" id="ring"><span class="cursor-label mono" id="ringLabel"></span></span><span class="cursor-dot" id="dot"></span></div>
+
+<header class="top wrap">
+  <a class="brand" href="#topo" data-scroll data-magnetic>O Dia Escuro</a>
+  <span class="top-date mono">02 · 08 · 2027</span>
+  <nav class="top-nav" aria-label="Seções">
+    <a class="mono" href="#sequencia" data-scroll data-magnetic><span class="roll">Sequência</span></a>
+    <a class="mono" href="#faixa" data-scroll data-magnetic><span class="roll">Faixa</span></a>
+    <a class="mono" href="#contagem" data-scroll data-magnetic><span class="roll">Contagem</span></a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero" id="topo">
+    <div class="under" aria-hidden="true">
+      <svg class="orbit" id="orbit" viewBox="0 0 200 200">
+        <defs><path id="orbitPath" d="M100,100 m-84,0 a84,84 0 1,1 168,0 a84,84 0 1,1 -168,0"/></defs>
+        <text><textPath href="#orbitPath" textLength="526" lengthAdjust="spacing">Algumas horas antes · o céu ainda é azul · a Lua já está ali ·</textPath></text>
+      </svg>
+      <p class="under-line" id="underLine">Antes da sombra,<br>uma manhã <span class="hollow-ink">comum.</span></p>
+    </div>
+    <div class="hero-frame" id="heroFrame">
+      <canvas class="sky" id="heroSky" aria-hidden="true"></canvas>
+      <div class="hero-inner wrap">
+        <div class="hero-meta mono">
+          <span>Eclipse solar total</span>
+          <span>Máximo em 25°30′N 33°12′E</span>
+          <span>perto de Luxor, Egito</span>
+        </div>
+        <h1 class="hero-title" id="heroTitle">O dia<br>escur<span class="hollow">o</span></h1>
+        <div class="hero-foot">
+          <p class="hero-lede">Em 2 de agosto de 2027 a Lua cobre o Sol por até <strong>6 min 23 s</strong>, numa faixa de sombra que atravessa a Espanha, o norte da África e o Egito.</p>
+          <a class="btn" href="#sequencia" data-scroll data-magnetic><span class="roll">Ver a sequência</span><span class="btn-arrow" aria-hidden="true">↓</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="seq" id="sequencia" aria-label="A sequência do eclipse">
+    <div class="seq-stage" id="seqStage" data-cursor-label="role">
+      <canvas class="sky" id="seqSky" aria-hidden="true"></canvas>
+      <div class="seq-inner wrap">
+        <p class="seq-eyebrow mono">A sequência · role devagar</p>
+        <aside class="hud mono" aria-live="off">
+          <div><span class="hud-k">Sol coberto</span><span class="hud-v" id="hudCov">0,0%</span></div>
+          <div><span class="hud-k">Distância entre centros</span><span id="hudSep">2,70 raios solares</span></div>
+          <div><span class="hud-k">Magnitude</span><span>1,079</span></div>
+        </aside>
+        <div class="seq-text">
+          <p class="seq-label mono" id="seqLabel">Antes</p>
+          <h2 class="seq-title" id="seqTitle">Um dia comum.</h2>
+          <p class="seq-sub" id="seqSub">Céu claro, sombras nítidas. Nada no céu avisa o que vem.</p>
+        </div>
+        <div class="rail mono" id="rail" aria-hidden="true">
+          <span class="rail-line"></span><span class="rail-fill" id="railFill"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="safety" aria-label="Segurança">
+    <div class="mq" data-dir="1"><div class="mq-track">
+      <span>Não olhe</span><span class="o">para o Sol</span><span class="s">sem filtro</span><span class="x">✷</span>
+      <span>ISO 12312-2</span><span class="o">no rosto</span><span class="x">✷</span>
+    </div></div>
+    <div class="mq" data-dir="-1"><div class="mq-track">
+      <span class="s">só na totalidade</span><span>Tire os óculos</span><span class="x">✷</span>
+      <span class="o">ao primeiro brilho</span><span>Ponha de volta</span><span class="x">✷</span>
+    </div></div>
+    <div class="wrap"><div class="inner safety-grid">
+      <p class="mono">Regra de ouro</p>
+      <p class="big-serif">Filtro certificado do primeiro ao último contato. Tire <em>só</em> quando o Sol sumir por completo, e ponha de volta assim que a borda brilhar.</p>
+    </div></div>
+  </section>
+
+  <section class="faixa" id="faixa" aria-label="A faixa da totalidade">
+    <div class="faixa-pin" data-cursor-label="arraste">
+      <div class="faixa-head wrap">
+        <p class="mono">A faixa da totalidade</p>
+        <p class="mono faixa-prog"><span>Atlântico</span><span class="faixa-line"><i id="umbra"></i></span><span>Índico</span></p>
+      </div>
+      <div class="faixa-track" id="track">
+        <article class="stop stop-intro">
+          <p class="mono stop-k">De oeste para leste</p>
+          <h2 class="intro-title">Uma sombra cruza dois continentes.</h2>
+          <p class="stop-text">Fora da faixa, o eclipse é parcial e o dia segue claro. Dentro dela, o dia vira noite por alguns minutos.</p>
+        </article>
+        <article class="stop">
+          <p class="mono stop-k">Espanha · 36°01′N 5°36′O</p>
+          <p class="stop-dur" data-dur="4:39">0:00</p>
+          <p class="mono">minutos de totalidade</p>
+          <h3 class="stop-name">Tarifa</h3>
+          <p class="stop-text">A ponta sul da Europa. Da praia, dá para ver a sombra chegar pelo mar.</p>
+        </article>
+        <article class="stop">
+          <p class="mono stop-k">Marrocos · 35°46′N 5°48′O</p>
+          <p class="stop-dur" data-dur="4:50">0:00</p>
+          <p class="mono">minutos de totalidade</p>
+          <h3 class="stop-name">Tânger</h3>
+          <p class="stop-text">Do outro lado do Estreito de Gibraltar, onze segundos a mais.</p>
+        </article>
+        <article class="stop stop-peak">
+          <p class="mono stop-k">Egito · 25°41′N 32°39′L</p>
+          <p class="stop-dur" data-dur="6:19">0:00</p>
+          <p class="mono">minutos de totalidade</p>
+          <h3 class="stop-name">Luxor</h3>
+          <p class="stop-text">Céu quase sempre limpo em agosto. A poucos quilômetros dali, em 25°30′N 33°12′L, fica o máximo: 6 min 23 s.</p>
+        </article>
+        <article class="stop">
+          <p class="mono stop-k">Depois</p>
+          <p class="stop-dur" data-dur="→">·</p>
+          <p class="mono">rumo ao leste</p>
+          <h3 class="stop-name">Índico</h3>
+          <p class="stop-text">A sombra passa pela Arábia Saudita, pelo Iêmen e pela Somália, e deixa a Terra sobre o Oceano Índico.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="muda wrap" aria-label="O que muda durante a totalidade">
+    <div class="inner">
+      <div class="muda-head">
+        <p class="mono">Durante a totalidade</p>
+        <h2 class="muda-title">O que muda em seis minutos</h2>
+      </div>
+      <ul class="muda-list">
+        <li><span class="mono">Pele</span><p class="fill">O ar esfria de repente, como se uma nuvem enorme passasse.</p></li>
+        <li><span class="mono">Ouvido</span><p class="fill">Os pássaros se calam ou voltam para os ninhos.</p></li>
+        <li><span class="mono">Olhos</span><p class="fill">Planetas e as estrelas mais brilhantes aparecem em pleno dia.</p></li>
+        <li><span class="mono">Horizonte</span><p class="fill">Em toda a volta, o céu fica da cor de um pôr do sol.</p></li>
+        <li><span class="mono">Chão</span><p class="fill">Pouco antes e pouco depois, faixas de sombra tremulam no chão.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="count" id="contagem" aria-label="Contagem regressiva">
+    <canvas class="sky" id="countSky" aria-hidden="true"></canvas>
+    <div class="count-inner wrap">
+      <p class="mono">Faltam</p>
+      <div class="clock" id="clock" role="timer" aria-live="off"></div>
+      <p class="count-note">até o máximo do eclipse, por volta das 10:07 UTC de 2 de agosto de 2027.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot wrap">
+  <p class="foot-word" id="footWord" aria-label="Escuro">Escuro</p>
+  <div class="foot-row">
+    <p>Página-experimento feita com GSAP, ScrollTrigger, SplitText e Lenis. O Sol e a Lua são desenhados em canvas a cada quadro.</p>
+    <p>Dados: <a href="https://en.wikipedia.org/wiki/Solar_eclipse_of_August_2,_2027">Wikipedia</a> e <a href="https://www.space.com/best-places-to-see-2027-total-solar-eclipse">Space.com</a>.</p>
+    <p class="mono">Nunca olhe para o Sol sem filtro certificado.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/SplitText.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+(() => {
+  const loader = document.getElementById('loader');
+  if (!window.gsap || !window.ScrollTrigger || !window.SplitText) { loader.remove(); return; }
+  gsap.registerPlugin(ScrollTrigger, SplitText, ScrambleTextPlugin);
+  gsap.defaults({ ease: 'power3.out', duration: 0.85 });
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const root = document.documentElement;
+  const C = { day:'#b9cddf', ink:'#09121f', night:'#05070c', pearl:'#ece8de', rose:'#ff5c72' };
+  const skyMix = gsap.utils.interpolate(C.day, C.night);
+  const M = 1.079;              // magnitude: a Lua parece 7,9% maior que o Sol
+  const TILT = 0.12;            // caminho levemente inclinado da Lua
+  const clamp = gsap.utils.clamp;
+  const smooth = (a, b, x) => { const t = clamp(0, 1, (x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+  /* ---------- Lenis ---------- */
+  let lenis = null;
+  if (!reduce && window.Lenis) {
+    lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(t => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+    lenis.stop();
+  }
+  document.querySelectorAll('[data-scroll]').forEach(a => a.addEventListener('click', e => {
+    const t = document.querySelector(a.getAttribute('href'));
+    if (!t) return;
+    e.preventDefault();
+    if (lenis) lenis.scrollTo(t, { duration: 2.4, easing: x => 1 - Math.pow(1 - x, 4) });
+    else t.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+  }));
+
+  /* ---------- ponteiro ---------- */
+  const mouse = { x: innerWidth / 2, y: innerHeight / 2, nx: 0, ny: 0, sx: 0, sy: 0, moved: 0 };
+  addEventListener('pointermove', e => {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    mouse.nx = (e.clientX / innerWidth - 0.5) * 2; mouse.ny = (e.clientY / innerHeight - 0.5) * 2;
+    mouse.moved = performance.now();
+  }, { passive: true });
+
+  if (fine) {
+    const ring = document.getElementById('ring'), dot = document.getElementById('dot');
+    const rx = gsap.quickTo(ring, 'x', { duration: 0.55, ease: 'power3' }), ry = gsap.quickTo(ring, 'y', { duration: 0.55, ease: 'power3' });
+    const dx = gsap.quickTo(dot, 'x', { duration: 0.08 }), dy = gsap.quickTo(dot, 'y', { duration: 0.08 });
+    addEventListener('pointermove', e => { rx(e.clientX); ry(e.clientY); dx(e.clientX); dy(e.clientY); }, { passive: true });
+    const label = document.getElementById('ringLabel');
+    document.querySelectorAll('a, button').forEach(el => {
+      el.addEventListener('pointerenter', () => gsap.to(ring, { scale: 2.3, duration: 0.4 }));
+      el.addEventListener('pointerleave', () => gsap.to(ring, { scale: 1, duration: 0.4 }));
+    });
+    document.querySelectorAll('[data-cursor-label]').forEach(el => {
+      el.addEventListener('pointerenter', () => { label.textContent = el.dataset.cursorLabel; gsap.to(ring, { width: 76, height: 76, duration: 0.45 }); });
+      el.addEventListener('pointerleave', () => { label.textContent = ''; gsap.to(ring, { width: 38, height: 38, duration: 0.45 }); });
+    });
+    document.querySelectorAll('[data-magnetic]').forEach(el => {
+      const xTo = gsap.quickTo(el, 'x', { duration: 0.45, ease: 'power3.out' });
+      const yTo = gsap.quickTo(el, 'y', { duration: 0.45, ease: 'power3.out' });
+      el.addEventListener('pointermove', e => {
+        const r = el.getBoundingClientRect();
+        xTo((e.clientX - (r.left + r.width / 2)) * 0.2); yTo((e.clientY - (r.top + r.height / 2)) * 0.2);
+      });
+      el.addEventListener('pointerleave', () => { xTo(0); yTo(0); });
+    });
+  }
+
+  /* ---------- eclipse em three.js ---------- */
+  // fração do disco solar coberta pela Lua (área da lente entre dois círculos)
+  function coverage(dist) {
+    const d = Math.abs(dist), r1 = 1, r2 = M;
+    if (d >= r1 + r2) return 0;
+    if (d <= r2 - r1) return 1;
+    const a = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1))
+            + r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2))
+            - 0.5 * Math.sqrt((-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2));
+    return Math.min(1, a / Math.PI);
+  }
+
+  // uniformes compartilhados por todos os materiais da cena
+  const U = {
+    uTime: { value: 0 }, uDark: { value: 0 }, uVis: { value: 1 }, uCorona: { value: 0 }, uFlare: { value: 0 },
+    uHorizon: { value: 1 }, uGain: { value: 1 }, uSunI: { value: 5.5 }, uRpx: { value: 100 }, uPR: { value: 1 },
+    uRes: { value: new THREE.Vector2(1, 1) }, uSunPx: { value: new THREE.Vector2() }, uMouse: { value: new THREE.Vector2() }
+  };
+  const HEAD = `
+uniform vec2 uRes, uSunPx, uMouse;
+uniform float uTime, uDark, uVis, uCorona, uFlare, uHorizon, uGain, uSunI, uRpx, uPR;
+float hash(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0., a = .5; for(int i = 0; i < 5; i++){ v += a*noise(p); p = p*2.03 + vec2(1.7,9.2); a *= .5; } return v; }
+float h3(vec3 p){ p = fract(p*.3183099 + .1); p *= 17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+float n3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.-2.*f);
+  return mix(mix(mix(h3(i), h3(i+vec3(1,0,0)), f.x), mix(h3(i+vec3(0,1,0)), h3(i+vec3(1,1,0)), f.x), f.y),
+             mix(mix(h3(i+vec3(0,0,1)), h3(i+vec3(1,0,1)), f.x), mix(h3(i+vec3(0,1,1)), h3(i+vec3(1,1,1)), f.x), f.y), f.z); }
+float fbm3(vec3 p){ float v = 0., a = .5; for(int i = 0; i < 5; i++){ v += a*n3(p); p = p*2.03 + 1.7; a *= .5; } return v; }
+vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
+// céu: azul de manhã, noite no zênite e pôr do sol em volta do horizonte na totalidade
+vec3 skyAt(vec2 fc){
+  vec2 uv = fc/uRes; float r = length(fc - uSunPx)/uRpx, dk = uDark, tot = smoothstep(.55, 1., dk), hgt = uv.y;
+  vec3 dayS = mix(vec3(.80,.87,.93), vec3(.36,.57,.84), pow(hgt, .75));
+  vec3 nightS = mix(vec3(.06,.06,.1), vec3(.008,.012,.03), pow(hgt, .5));
+  vec3 s = mix(dayS, nightS, dk);
+  s += uHorizon*tot*(vec3(1.,.42,.16)*.62*exp(-hgt*6.5) + vec3(1.,.72,.42)*.35*exp(-hgt*22.));
+  s += uHorizon*tot*vec3(.25,.12,.3)*.16*exp(-pow((hgt-.32)*4., 2.));
+  s += vec3(1.,.95,.86)*uVis*(.4*exp(-max(r-1.,0.)*1.1) + .2*exp(-max(r-1.,0.)*.22));
+  s *= 1. - .22*pow(length(uv - .5)*1.25, 2.);
+  return lin(s);
+}`;
+  const VERT_P = 'varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }';
+  const VERT_S = 'varying vec3 vN; varying vec3 vO; void main(){ vO = position; vN = normalize(normalMatrix*normal); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }';
+
+  function makeGL() {
+    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+    camera.position.z = 50;
+    const mat = o => new THREE.ShaderMaterial({ uniforms: U, ...o });
+
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat({
+      depthTest: false, depthWrite: false,
+      vertexShader: 'void main(){ gl_Position = vec4(position.xy, 0., 1.); }',
+      fragmentShader: HEAD + 'void main(){ vec3 c = skyAt(gl_FragCoord.xy) + (hash(gl_FragCoord.xy + fract(uTime)*91.) - .5)/400.; gl_FragColor = vec4(c, 1.); }'
+    }));
+    sky.frustumCulled = false; sky.renderOrder = -3; scene.add(sky);
+
+    // estrelas em várias profundidades: as mais próximas andam mais com o mouse
+    const N = 1600, pos = new Float32Array(N * 3), seed = new Float32Array(N * 2);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 26; pos[i * 3 + 1] = (Math.random() - 0.5) * 16; pos[i * 3 + 2] = -5;
+      seed[i * 2] = Math.random(); seed[i * 2 + 1] = Math.random();
+    }
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    sg.setAttribute('aSeed', new THREE.BufferAttribute(seed, 2));
+    const stars = new THREE.Points(sg, mat({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: HEAD + `attribute vec2 aSeed; varying float vA;
+        void main(){ vec3 p = position; p.xy -= uMouse*(.2 + aSeed.x*1.4);
+          gl_Position = projectionMatrix*modelViewMatrix*vec4(p, 1.);
+          float tw = .55 + .45*sin(uTime*(1.5 + aSeed.y*8.) + aSeed.y*60.);
+          vA = tw*smoothstep(.6, 1., uDark)*(.25 + .75*aSeed.y);
+          gl_PointSize = (1.2 + 2.6*pow(aSeed.y, 8.))*uPR; }`,
+      fragmentShader: `varying float vA; void main(){ float d = length(gl_PointCoord - .5); gl_FragColor = vec4(vec3(.8,.87,1.)*smoothstep(.5, 0., d)*vA*1.6, 1.); }`
+    }));
+    stars.frustumCulled = false; stars.renderOrder = -2; scene.add(stars);
+
+    // coroa, cromosfera e protuberâncias: uma camada que soma luz atrás do Sol
+    const corona = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), mat({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: VERT_P,
+      fragmentShader: HEAD + `varying vec2 vP;
+        void main(){
+          vec2 p = vP; float r = length(p); vec2 dir = p/max(r, 1e-4);
+          if(uCorona < .001 || r < .98){ gl_FragColor = vec4(0.); return; }
+          float t = uTime*.012;
+          vec2 w = vec2(fbm(dir*1.1 + t), fbm(dir*1.1 - t + 4.));
+          float s1 = fbm(dir*1.25 + p*.035 + w*.6);
+          float s2 = noise(dir*16. + vec2(t*4., 0.)), s3 = noise(dir*48. + 3.);
+          float eq = mix(.45, 1.45, pow(abs(dir.x), 1.4));
+          float streak = pow(s1, 2.4)*1.9*eq + s2*.22 + s3*.1;
+          float fall = pow(r, -max(2.3, 4.8 - 1.6*streak));
+          float inner = exp(-(r-1.)*9.);
+          float polar = pow(abs(dir.y), 6.)*pow(noise(vec2(atan(p.y, p.x)*38., 0.)), 3.)*exp(-(r-1.)*2.6)*1.4;
+          float c = (fall*(.42 + streak) + inner*1.6 + polar)*smoothstep(.98, 1.02, r);
+          vec3 col = mix(vec3(1.,.95,.86), vec3(.7,.8,1.), smoothstep(1.05, 4., r))*c*1.25;
+          float pr = fbm(dir*6.5 + vec2(r*8., uTime*.05));
+          float prom = smoothstep(.56, .8, pr)*exp(-(r-1.)*18.);
+          float chromo = exp(-abs(r-1.006)*300.);
+          col += vec3(1.,.16,.3)*(prom*3. + chromo*2.);
+          gl_FragColor = vec4(col*uCorona, 1.);
+        }`
+    }));
+    corona.position.z = -2; corona.renderOrder = 0; scene.add(corona);
+
+    // Sol: plasma em 3D com escurecimento de borda, em HDR para o bloom
+    const sun = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), mat({
+      vertexShader: VERT_S,
+      fragmentShader: HEAD + `varying vec3 vN; varying vec3 vO;
+        void main(){
+          float mu = clamp(vN.z, 0., 1.);
+          float limb = 1. - .6*(1.-mu) - .12*(1.-mu*mu);
+          float cells = fbm3(vO*5. + vec3(0., uTime*.03, uTime*.01));
+          float gran = n3(vO*60. + uTime*.25);
+          vec3 c = mix(vec3(1.,.36,.1), vec3(1.,.9,.74), limb)*limb*(.8 + .32*cells + .08*gran);
+          gl_FragColor = vec4(c*uSunI, 1.);
+        }`
+    }));
+    sun.renderOrder = 1; scene.add(sun);
+
+    // Lua: esfera com relevo na borda (dá as contas de Baily), crateras com sombra e luz da Terra
+    const MOON_H = `
+      float craters(vec3 n, float k, float lo, float hi){
+        float c = n3(n*k);
+        return -smoothstep(lo, hi, c) + (smoothstep(lo - .07, lo, c) - smoothstep(lo, lo + .08, c))*.7;
+      }
+      float moonH(vec3 n){
+        return fbm3(n*2.2 + 4.)*.55 + craters(n, 7., .62, .8)*.5 + craters(n + 3.1, 17., .64, .8)*.3 + craters(n + 9.7, 41., .66, .82)*.15;
+      }`;
+    const moon = new THREE.Mesh(new THREE.SphereGeometry(M, 256, 128), mat({
+      vertexShader: HEAD + `varying vec3 vO; varying vec3 vN; varying vec3 vT; varying vec3 vB;
+        void main(){
+          vec3 n = normalize(position);
+          float h = (n3(n*14.) - .5)*.012 + (n3(n*46.) - .5)*.004;
+          vec3 t = normalize(cross(n, vec3(0., 1., .001))), b = cross(n, t);
+          vO = n; vN = normalize(normalMatrix*n); vT = normalize(normalMatrix*t); vB = normalize(normalMatrix*b);
+          gl_Position = projectionMatrix*modelViewMatrix*vec4(position + n*h, 1.);
+        }`,
+      fragmentShader: HEAD + MOON_H + `varying vec3 vO; varying vec3 vN; varying vec3 vT; varying vec3 vB;
+        void main(){
+          vec3 n = normalize(vO);
+          vec3 t = normalize(cross(n, vec3(0., 1., .001))), b = cross(n, t);
+          float e = .006, h0 = moonH(n);
+          float gt = (moonH(normalize(n + t*e)) - h0)/e, gb = (moonH(normalize(n + b*e)) - h0)/e;
+          vec3 N = normalize(normalize(vN) - (gt*normalize(vT) + gb*normalize(vB))*.035);
+          float mu = clamp(vN.z, 0., 1.);
+          float maria = smoothstep(.35, .65, fbm3(n*1.6 + 11.));
+          vec3 alb = mix(vec3(.62,.62,.66), vec3(.3,.31,.35), maria)*(.85 + .3*h0);
+          float lam = max(dot(N, normalize(vec3(-.55, .45, .7))), 0.);
+          vec3 earth = alb*(lam*lam*.06 + .004)*uDark*uGain;
+          vec3 rim = vec3(1.,.92,.8)*pow(1. - mu, 14.)*uCorona*1.2;
+          gl_FragColor = vec4(skyAt(gl_FragCoord.xy)*(1. - .985*uDark) + earth + rim, 1.);
+        }`
+    }));
+    moon.position.z = 10; moon.renderOrder = 2; scene.add(moon);
+
+    // anel de diamante: ponto de luz, raios e traço horizontal
+    const flare = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mat({
+      transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: VERT_P,
+      fragmentShader: HEAD + `varying vec2 vP;
+        void main(){
+          if(uFlare < .001){ gl_FragColor = vec4(0.); return; }
+          vec2 q = vP; float d = length(q), a = atan(q.y, q.x);
+          float core = exp(-d*16.)*7. + exp(-d*3.)*.9;
+          float rays = pow(abs(cos(a*3. + .4)), 90.)*exp(-d*.8)*1.4 + pow(abs(cos(a*2. + 1.3)), 140.)*exp(-d*1.3)*.7;
+          float ana = exp(-abs(q.y)*90.)*exp(-abs(q.x)*.6)*1.2;
+          gl_FragColor = vec4(vec3(1.,.97,.93)*(core + rays + ana)*uFlare, 1.);
+        }`
+    }));
+    flare.position.z = 20; flare.renderOrder = 5; scene.add(flare);
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.35, 1.0);
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+
+    let cw = 0, ch = 0, cpr = 0;
+    return function render(v, t) {
+      if (v.w !== cw || v.h !== ch || v.dpr !== cpr) {
+        cw = v.w; ch = v.h; cpr = v.dpr;
+        renderer.setPixelRatio(cpr); renderer.setSize(cw, ch, false);
+        composer.setPixelRatio(cpr); composer.setSize(cw, ch);
+      }
+      const R = v.r, hw = v.w / 2 / R, hh = v.h / 2 / R;
+      camera.left = -hw; camera.right = hw; camera.top = hh; camera.bottom = -hh; camera.updateProjectionMatrix();
+      const sx = (v.cx - v.w / 2) / R + mouse.sx * 0.12, sy = (v.h / 2 - v.cy) / R - mouse.sy * 0.12;
+      sun.position.set(sx, sy, 0); corona.position.set(sx, sy, -2);
+      sun.rotation.y = t * 0.02;
+      moon.position.set(sx + v.dd, sy + v.dd * TILT, 10);
+      moon.rotation.set(0.3, t * 0.01, 0);
+      const md = Math.hypot(v.dd, v.dd * TILT) || 1e-5;
+      flare.position.set(sx - v.dd / md, sy - v.dd * TILT / md, 20);
+      U.uRes.value.set(cw * cpr, ch * cpr);
+      U.uSunPx.value.set((sx + hw) * R * cpr, (sy + hh) * R * cpr);
+      U.uRpx.value = R * cpr; U.uPR.value = cpr;
+      U.uMouse.value.set(mouse.sx, -mouse.sy);
+      U.uTime.value = t; U.uDark.value = v.dark; U.uVis.value = v.vis;
+      U.uCorona.value = v.coronaA; U.uFlare.value = v.flare; U.uHorizon.value = v.horizon; U.uGain.value = v.gain;
+      bloom.strength = 0.75 - 0.3 * v.dark + 0.6 * v.flare;
+      composer.render();
+      v.ctx.drawImage(renderer.domElement, 0, 0);
+    };
+  }
+  let renderGL = null;
+  try { renderGL = makeGL(); } catch (e) { console.warn('WebGL indisponível', e); }
+
+  // cada seção tem seu próprio canvas 2D; um único renderizador three.js desenha e copia para ele
+  class Eclipse {
+    constructor(canvas, opts) {
+      Object.assign(this, { d: 0, drift: 0, fixedDark: null, gain: 1, horizon: 1, onDark: null, on: false, dark: 1, layout: null }, opts);
+      this.c = canvas; this.ctx = canvas.getContext('2d', { alpha: false });
+      this.resize();
+    }
+    resize() {
+      const w = this.c.clientWidth, h = this.c.clientHeight; if (!w || !h) return;
+      this.w = w; this.h = h; this.dpr = Math.min(devicePixelRatio || 1, 1.25);
+      this.c.width = Math.round(w * this.dpr); this.c.height = Math.round(h * this.dpr);
+      Object.assign(this, this.layout(w, h));
+    }
+    draw(t) {
+      if (!renderGL || !this.w) return;
+      const d = this.d + (this.drift ? this.drift * Math.sin(t * 0.35) : 0);
+      const cov = coverage(Math.abs(d) * Math.hypot(1, TILT)), vis = 1 - cov;
+      const target = this.fixedDark ?? (cov >= 1 ? 1 : 0.8 * Math.pow(smooth(0.5, 1, cov), 3));
+      this.dark += (target - this.dark) * 0.1;
+      if (this.onDark) this.onDark(this.dark);
+      this.dd = d; this.vis = vis;
+      this.coronaA = this.gain * (vis <= 0 ? 1 : Math.pow(smooth(0.02, 0, vis), 2) * 0.75);
+      this.flare = vis > 0 ? 1 - smooth(0.0004, 0.03, vis) : 0;
+      renderGL(this, t);
+    }
+  }
+
+  const narrow = w => w < 760;
+  const heroSky = new Eclipse(document.getElementById('heroSky'), {
+    fixedDark: 1, drift: 0.028, horizon: 0.55,
+    layout: (w, h) => narrow(w) ? { cx: w * 0.5, cy: h * 0.38, r: w * 0.17 } : { cx: w * 0.67, cy: h * 0.42, r: Math.min(w, h) * 0.14 }
+  });
+  const stage = document.getElementById('seqStage');
+  const seqSky = new Eclipse(document.getElementById('seqSky'), {
+    d: 2.7, dark: 0,
+    layout: (w, h) => narrow(w) ? { cx: w * 0.5, cy: h * 0.4, r: w * 0.15 } : { cx: w * 0.66, cy: h * 0.44, r: Math.min(w, h) * 0.15 },
+    onDark: dk => {
+      stage.style.setProperty('--stage', skyMix(dk));
+      stage.style.setProperty('--stage-ink', dk > 0.42 ? C.pearl : C.ink);
+    }
+  });
+  const countSky = new Eclipse(document.getElementById('countSky'), {
+    fixedDark: 1, drift: 0.03, gain: 0.85, horizon: 0.8,
+    layout: (w, h) => ({ cx: w * 0.5, cy: h * 0.3, r: Math.min(w, h) * (narrow(w) ? 0.15 : 0.11) })
+  });
+  const skies = [heroSky, seqSky, countSky];
+  window.__eclipse = { heroSky, seqSky, countSky };
+
+  /* ---------- texto que reage ao cursor (eixos wdth e wght) ---------- */
+  function proximity(chars, o) {
+    const st = chars.map(() => ({ w: o.wdth, g: o.wght }));
+    let active = false;
+    return {
+      set on(v) { active = v; },
+      tick() {
+        if (!active || !fine) return;
+        const idle = performance.now() - mouse.moved > 1600;
+        const rects = chars.map(c => c.getBoundingClientRect());
+        let moving = false;
+        chars.forEach((c, i) => {
+          const r = rects[i], dist = Math.hypot(mouse.x - (r.left + r.width / 2), mouse.y - (r.top + r.height / 2));
+          const f = idle ? 0 : Math.pow(Math.max(0, 1 - dist / o.rad), 2);
+          const s = st[i], tw = o.wdth + (o.wdthMax - o.wdth) * f, tg = o.wght + (o.wghtMin - o.wght) * f;
+          if (Math.abs(tw - s.w) < 0.05 && Math.abs(tg - s.g) < 0.5) return;
+          moving = true; s.w += (tw - s.w) * 0.14; s.g += (tg - s.g) * 0.14;
+          c.style.fontVariationSettings = `"wdth" ${s.w.toFixed(1)}, "wght" ${s.g.toFixed(0)}`;
+        });
+        return moving;
+      }
+    };
+  }
+
+  /* ---------- marquee com velocidade da rolagem ---------- */
+  const rows = [...document.querySelectorAll('.mq')].map(el => {
+    const tr = el.querySelector('.mq-track'); tr.innerHTML += tr.innerHTML;
+    return { tr, dir: +el.dataset.dir, x: 0, w: 0 };
+  });
+  const measureRows = () => rows.forEach(r => r.w = r.tr.scrollWidth / 2);
+  let mqOn = false, vel = 0, skew = 0, scrollDir = 1;
+
+  /* ---------- carregamento ---------- */
+  const num = document.getElementById('loaderNum'), lmoon = document.getElementById('loaderMoon');
+  const prog = { v: 0 };
+  const loadTl = gsap.to(prog, {
+    v: 100, duration: reduce ? 0.3 : 1.7, ease: 'power2.inOut',
+    onUpdate() { num.textContent = String(Math.round(prog.v)).padStart(3, '0'); lmoon.style.transform = `translateX(${110 - prog.v * 1.1}%)`; }
+  });
+  loader.style.animation = 'none';
+  const fontsReady = Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 2500))]);
+  Promise.all([fontsReady, loadTl]).then(init);
+
+  function init() {
+    skies.forEach(s => s.resize());
+    measureRows();
+
+    /* splits */
+    const heroTitle = document.getElementById('heroTitle');
+    const heroSplit = SplitText.create(heroTitle, { type: 'lines,chars', mask: 'lines', charsClass: 'ch' });
+    const underSplit = SplitText.create('#underLine', { type: 'lines,chars', mask: 'lines', charsClass: 'ch' });
+    document.querySelectorAll('.roll').forEach(el => SplitText.create(el, { type: 'chars', charsClass: 'ch', propIndex: true }));
+    const ledeSplit = SplitText.create('.hero-lede', { type: 'words' });
+    const heroProx = proximity(heroSplit.chars, { wdth: 62, wdthMax: 150, wght: 860, wghtMin: 140, rad: Math.max(220, innerWidth * 0.2) });
+
+    /* entrada */
+    const intro = gsap.timeline({ paused: true, defaults: { ease: 'expo.out' } });
+    intro.from(heroSplit.chars, { yPercent: 118, scaleY: 2.1, transformOrigin: '50% 100%', duration: 1.5, stagger: 0.045 }, 0)
+      .fromTo(heroTitle, { '--wdth': 150, '--wght': 200 }, { '--wdth': 62, '--wght': 860, duration: 1.9, ease: 'expo.inOut' }, 0)
+      .from('.hero-meta span', { autoAlpha: 0, x: 24, stagger: 0.08, duration: 1 }, 0.5)
+      .from(ledeSplit.words, { yPercent: 60, autoAlpha: 0, filter: 'blur(8px)', stagger: 0.04, duration: 0.9, ease: 'power4.out' }, 0.7)
+      .from('.btn', { autoAlpha: 0, scale: 0.8, duration: 1 }, 0.85)
+      .from('.top', { autoAlpha: 0, y: -16, duration: 1 }, 0.9)
+      .from(heroSky, { gain: 0, duration: 2.2, ease: 'power2.out' }, 0)
+      .add(() => { heroProx.on = true; }, 1.6)
+      .add(() => heroSplit.masks.forEach(m => { m.style.overflow = 'visible'; }));
+
+    /* herói: a noite se fecha no disco da Lua, as letras caem na sombra e a manhã aparece em volta */
+    const heroEl = document.getElementById('topo'), heroFrame = document.getElementById('heroFrame'), orbit = document.getElementById('orbit');
+    const hm = () => ({ x: heroSky.cx, y: heroSky.cy, r: heroSky.r * M });
+    const clipAt = r => { const m = hm(); return `circle(${r.toFixed(1)}px at ${m.x.toFixed(1)}px ${m.y.toFixed(1)}px)`; };
+    const placeOrbit = () => { const m = hm(), sz = m.r * 3.2; gsap.set(orbit, { width: sz, height: sz, left: m.x - sz / 2, top: m.y - sz / 2 }); };
+    placeOrbit();
+    ScrollTrigger.addEventListener('refreshInit', placeOrbit);
+    const toMoon = (axis) => (i, el) => {
+      const b = el.getBoundingClientRect(), h = heroEl.getBoundingClientRect(), m = hm();
+      return axis === 'x' ? m.x - (b.left - h.left + b.width / 2) : m.y - (b.top - h.top + b.height / 2);
+    };
+    gsap.set('#heroFrame', { clipPath: clipAt(Math.hypot(innerWidth, innerHeight)) });
+    const heroTl = gsap.timeline({ scrollTrigger: { trigger: '#topo', start: 'top top', end: '+=140%', pin: true, anticipatePin: 1, scrub: 1, invalidateOnRefresh: true } });
+    heroTl
+      .fromTo('#heroFrame', { clipPath: () => clipAt(Math.hypot(innerWidth, innerHeight)) }, { clipPath: () => clipAt(hm().r), ease: 'power3.inOut', duration: 0.6 }, 0)
+      .to(['.hero-meta', '.hero-foot'], { autoAlpha: 0, y: -24, duration: 0.18, ease: 'power2.in' }, 0)
+      .to(heroSplit.chars, {
+        x: toMoon('x'), y: toMoon('y'), scale: 0.04, rotation: () => gsap.utils.random(-140, 140), filter: 'blur(6px)', autoAlpha: 0,
+        stagger: { each: 0.014, from: 'end' }, ease: 'power3.in', duration: 0.42
+      }, 0.04)
+      .fromTo(orbit, { autoAlpha: 0, scale: 0.55, rotation: -80 }, { autoAlpha: 1, scale: 1, rotation: 30, duration: 0.5, ease: 'power3.out' }, 0.38)
+      .to(heroSky, { fixedDark: 0, gain: 0, duration: 0.32, ease: 'power1.inOut' }, 0.62)
+      .from(underSplit.chars, { yPercent: 115, rotationX: -80, stagger: 0.014, duration: 0.4, ease: 'power3.out' }, 0.58)
+      .to('#heroFrame', { autoAlpha: 0, duration: 0.14 }, 0.9)
+      .to(orbit, { rotation: 150, scale: 1.12, duration: 0.5, ease: 'none' }, 0.88);
+    ScrollTrigger.create({ trigger: '#topo', start: 'top bottom', end: () => heroTl.scrollTrigger.end + innerHeight, onToggle: s => { heroSky.on = s.isActive; heroProx.on = s.isActive && intro.progress() > 0.8; } });
+
+    /* sequência dos contatos */
+    const STAGES = [
+      { k: 'Antes', t: 'Um dia comum.', s: 'Céu claro, sombras nítidas. Nada no céu avisa o que vem.' },
+      { k: 'Primeiro contato', t: 'Uma mordida no Sol.', s: 'A Lua entra pela borda direita. A olho nu não se nota nada: só com filtro.' },
+      { k: 'Fase parcial', t: 'A luz fica estranha.', s: 'As sombras ganham bordas finas. Sob as árvores, cada fresta entre as folhas projeta um crescente.' },
+      { k: 'Segundo contato', t: 'Anel de diamante.', s: 'Os últimos raios passam pelos vales da borda lunar: são as contas de Baily. Depois, um único ponto de luz.' },
+      { k: 'Totalidade', t: 'Agora pode olhar.', s: 'A coroa aparece em volta do disco negro. Estrelas de dia, e um pôr do sol em todo o horizonte.' },
+      { k: 'Terceiro contato', t: 'O diamante volta.', s: 'Óculos de volta no rosto. O brilho reaparece do lado oposto, e a manhã volta aos poucos.' },
+      { k: 'Quarto contato', t: 'Fim.', s: 'A Lua sai pela borda esquerda. O céu nem lembra o que aconteceu.' }
+    ];
+    const c2 = M - 1;
+    const stageOf = d => d > M + 1 ? 0 : d > 0.6 ? 1 : d > 0.2 ? 2 : d > c2 ? 3 : d >= -c2 ? 4 : d > -(M + 1) ? 5 : 6;
+    const labelEl = document.getElementById('seqLabel'), titleEl = document.getElementById('seqTitle'), subEl = document.getElementById('seqSub');
+    let titleSplit = SplitText.create(titleEl, { type: 'words,chars', mask: 'words', wordsClass: 'wd', charsClass: 'ch' });
+    let shown = 0, want = 0, busy = false;
+    function swap() {
+      busy = true; const i = want;
+      gsap.to(labelEl, { duration: 0.8, overwrite: true, scrambleText: { text: STAGES[i].k, chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789·', speed: 0.7 } });
+      gsap.timeline({ onComplete() {
+          titleSplit.revert(); titleEl.textContent = STAGES[i].t; subEl.textContent = STAGES[i].s;
+          titleSplit = SplitText.create(titleEl, { type: 'words,chars', mask: 'words', wordsClass: 'wd', charsClass: 'ch' });
+          gsap.timeline({ onComplete() { busy = false; shown = i; if (want !== shown) swap(); } })
+            .from(titleSplit.chars, { yPercent: 115, rotationX: -75, duration: 0.7, stagger: 0.018, ease: 'expo.out' })
+            .fromTo(subEl, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.55, ease: 'power3.out' }, 0.12);
+        } })
+        .to(titleSplit.chars, { yPercent: -115, rotationX: 75, duration: 0.3, stagger: 0.008, ease: 'power2.in' })
+        .to(subEl, { autoAlpha: 0, y: -12, duration: 0.25, ease: 'power2.in' }, 0);
+    }
+    const go = i => { want = i; if (!busy && i !== shown) swap(); };
+    const hudCov = document.getElementById('hudCov'), hudSep = document.getElementById('hudSep'), railFill = document.getElementById('railFill');
+    const fmt = (n, k) => n.toFixed(k).replace('.', ',');
+    const seqTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: '#sequencia', start: 'top top', end: '+=560%', pin: true, anticipatePin: 1, scrub: 1.1,
+        onUpdate: s => { railFill.style.transform = `scaleX(${s.progress})`; }
+      },
+      onUpdate() {
+        const d = seqSky.d, cov = coverage(Math.abs(d) * Math.hypot(1, TILT));
+        hudCov.textContent = cov >= 1 ? '100%' : fmt(Math.min(cov * 100, 99.9), 1) + '%';
+        hudSep.textContent = fmt(Math.abs(d), 2) + ' raios solares';
+        go(stageOf(d));
+      }
+    });
+    seqTl.to(seqSky, { d: M + 1, duration: 0.6, ease: 'none' }).addLabel('C1')
+      .to(seqSky, { d: 0.6, duration: 2, ease: 'none' })
+      .to(seqSky, { d: c2, duration: 1.2, ease: 'power1.out' }).addLabel('C2')
+      .to(seqSky, { d: 0, duration: 1.3, ease: 'none' }).addLabel('Máx')
+      .to(seqSky, { d: -c2, duration: 1.3, ease: 'none' }).addLabel('C3')
+      .to(seqSky, { d: -0.6, duration: 1, ease: 'power1.in' })
+      .to(seqSky, { d: -(M + 1), duration: 1.6, ease: 'none' }).addLabel('C4')
+      .to(seqSky, { d: -2.7, duration: 0.6, ease: 'none' });
+    ScrollTrigger.create({ trigger: '#sequencia', start: 'top bottom', end: () => seqTl.scrollTrigger.end + innerHeight, onToggle: s => { seqSky.on = s.isActive; } });
+    const rail = document.getElementById('rail');
+    ['C1', 'C2', 'Máx', 'C3', 'C4'].forEach(l => {
+      const m = document.createElement('span'); m.className = 'rail-mark';
+      m.style.left = (seqTl.labels[l] / seqTl.duration() * 100) + '%';
+      m.append(l); rail.append(m);
+    });
+
+    /* segurança: marquee ativo só quando visível */
+    ScrollTrigger.create({ trigger: '.safety', start: 'top bottom', end: 'bottom top', onToggle: s => { mqOn = s.isActive; } });
+    const ruleSplit = SplitText.create('.big-serif', { type: 'words' });
+    gsap.from(ruleSplit.words, { yPercent: 60, autoAlpha: 0, filter: 'blur(8px)', stagger: 0.05, duration: 0.9, ease: 'power4.out', scrollTrigger: { trigger: '.safety-grid', start: 'top 82%', once: true } });
+
+    /* dia vira noite antes da faixa */
+    const pageMix = gsap.utils.interpolate(C.day, C.night);
+    ScrollTrigger.create({
+      trigger: '#faixa', start: 'top 95%', end: 'top 25%', scrub: true,
+      onUpdate: s => { root.style.setProperty('--page', pageMix(s.progress)); root.style.setProperty('--fg', s.progress > 0.45 ? C.pearl : C.ink); }
+    });
+
+    /* faixa horizontal */
+    const track = document.getElementById('track'), umbra = document.getElementById('umbra');
+    const dist = () => Math.max(0, track.scrollWidth - innerWidth);
+    const hz = gsap.to(track, {
+      x: () => -dist(), ease: 'none',
+      scrollTrigger: { trigger: '#faixa', start: 'top top', end: () => '+=' + dist(), pin: true, anticipatePin: 1, scrub: 1, invalidateOnRefresh: true,
+        onUpdate: s => { umbra.style.left = (s.progress * 100) + '%'; } }
+    });
+    const introTitle = document.querySelector('.intro-title');
+    const introSplit = SplitText.create(introTitle, { type: 'lines', mask: 'lines' });
+    gsap.from(introSplit.lines, { yPercent: 105, duration: 1.2, stagger: 0.1, ease: 'expo.out', scrollTrigger: { trigger: '#faixa', start: 'top 55%' } });
+    gsap.utils.toArray('.stop:not(.stop-intro)').forEach(stop => {
+      const name = stop.querySelector('.stop-name'), dur = stop.querySelector('.stop-dur');
+      const ns = SplitText.create(name, { type: 'chars', mask: 'chars', charsClass: 'ch' });
+      gsap.set(ns.chars, { yPercent: 105 });
+      ScrollTrigger.create({
+        trigger: stop, containerAnimation: hz, start: 'left 72%', once: true,
+        onEnter: () => {
+          gsap.to(ns.chars, { yPercent: 0, duration: 1, stagger: 0.04, ease: 'expo.out' });
+          gsap.to(dur, { duration: 1.4, scrambleText: { text: dur.dataset.dur, chars: '0123456789:', speed: 0.5 } });
+        }
+      });
+      gsap.fromTo(name, { xPercent: 14 }, { xPercent: -14, ease: 'none', scrollTrigger: { trigger: stop, containerAnimation: hz, start: 'left right', end: 'right left', scrub: true } });
+    });
+
+    /* o que muda: palavras acendem com a rolagem */
+    const mudaTitle = SplitText.create('.muda-title', { type: 'lines,chars', mask: 'lines', charsClass: 'ch' });
+    gsap.from(mudaTitle.chars, { yPercent: 110, stagger: 0.02, duration: 1.1, ease: 'expo.out', scrollTrigger: { trigger: '.muda-head', start: 'top 80%' } });
+    document.querySelectorAll('.fill').forEach(p => {
+      const sp = SplitText.create(p, { type: 'words' });
+      gsap.fromTo(sp.words, { opacity: 0.14 }, { opacity: 1, stagger: 0.1, ease: 'none', scrollTrigger: { trigger: p, start: 'top 82%', end: 'bottom 48%', scrub: true } });
+    });
+    document.querySelectorAll('.muda-list .mono').forEach(el => {
+      const txt = el.textContent;
+      ScrollTrigger.create({ trigger: el, start: 'top 85%', once: true, onEnter: () => gsap.to(el, { duration: 1, scrambleText: { text: txt, chars: 'lowerCase', speed: 0.6 } }) });
+    });
+
+    /* contagem */
+    buildClock();
+    ScrollTrigger.create({ trigger: '#contagem', start: 'top bottom', end: 'bottom top', onToggle: s => { countSky.on = s.isActive; } });
+    gsap.from('.clock-g', { autoAlpha: 0, y: 50, stagger: 0.1, duration: 1.2, ease: 'expo.out', scrollTrigger: { trigger: '#contagem', start: 'top 60%' } });
+
+    /* rodapé */
+    const footWord = document.getElementById('footWord');
+    const footSplit = SplitText.create(footWord, { type: 'chars', charsClass: 'ch' });
+    const footProx = proximity(footSplit.chars, { wdth: 62, wdthMax: 150, wght: 860, wghtMin: 120, rad: Math.max(240, innerWidth * 0.22) });
+    gsap.from(footSplit.chars, { yPercent: 60, autoAlpha: 0, scaleY: 1.8, transformOrigin: '50% 100%', stagger: 0.05, duration: 1.3, ease: 'expo.out', scrollTrigger: { trigger: footWord, start: 'top 92%' } });
+    ScrollTrigger.create({ trigger: footWord, start: 'top bottom', end: 'bottom top', onToggle: s => { footProx.on = s.isActive; } });
+
+    const bar = document.getElementById('progress');
+    ScrollTrigger.create({ start: 0, end: 'max', onUpdate: s => { bar.style.transform = `scaleX(${s.progress})`; } });
+
+    /* laço de quadros */
+    gsap.ticker.add((time, dt) => {
+      mouse.sx += (mouse.nx - mouse.sx) * 0.05; mouse.sy += (mouse.ny - mouse.sy) * 0.05;
+      for (const s of skies) if (s.on && !(s === heroSky && heroFrame.style.visibility === 'hidden')) s.draw(time);
+      heroProx.tick(); footProx.tick();
+      if (mqOn && !reduce) {
+        const v = lenis ? lenis.velocity : 0;
+        if (Math.abs(v) > 0.1) scrollDir = v > 0 ? 1 : -1;
+        vel += (v - vel) * 0.1;
+        skew += (clamp(-12, 12, -vel * 0.4) - skew) * 0.12;
+        for (const r of rows) {
+          r.x -= (0.7 + Math.abs(vel) * 0.3) * r.dir * scrollDir * dt * 0.06;
+          r.x = gsap.utils.wrap(-r.w, 0, r.x);
+          r.tr.style.transform = `translate3d(${r.x}px,0,0) skewX(${skew}deg)`;
+        }
+      }
+    });
+
+    let rt;
+    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { skies.forEach(s => s.resize()); measureRows(); }, 150); });
+
+    ScrollTrigger.refresh();
+    addEventListener('load', () => ScrollTrigger.refresh());
+    heroSky.on = true;
+
+    /* saída do carregamento */
+    gsap.to(loader, {
+      clipPath: 'circle(0% at 50% 50%)', duration: reduce ? 0.2 : 1.2, ease: 'expo.inOut',
+      onComplete: () => { loader.remove(); lenis && lenis.start(); }
+    });
+    gsap.delayedCall(reduce ? 0 : 0.45, () => intro.play());
+  }
+
+  /* ---------- relógio odômetro ---------- */
+  function buildClock() {
+    const TARGET = Date.UTC(2027, 7, 2, 10, 7, 0);
+    const clock = document.getElementById('clock');
+    const groups = [['dias', 3], ['horas', 2], ['min', 2], ['seg', 2]];
+    const cols = [];
+    groups.forEach(([k, n]) => {
+      const g = document.createElement('div'); g.className = 'clock-g';
+      const ds = document.createElement('div'); ds.className = 'clock-d';
+      for (let i = 0; i < n; i++) {
+        const dg = document.createElement('span'); dg.className = 'dg';
+        const col = document.createElement('span'); col.className = 'dg-col';
+        for (let v = 0; v < 10; v++) { const s = document.createElement('span'); s.textContent = v; col.append(s); }
+        dg.append(col); ds.append(dg); cols.push({ col, v: -1 });
+      }
+      const lab = document.createElement('span'); lab.className = 'mono'; lab.textContent = k;
+      g.append(ds, lab); clock.append(g);
+    });
+    function tick(first) {
+      let s = Math.max(0, Math.floor((TARGET - Date.now()) / 1000));
+      const days = Math.floor(s / 86400); s -= days * 86400;
+      const h = Math.floor(s / 3600); s -= h * 3600;
+      const m = Math.floor(s / 60); s -= m * 60;
+      const str = String(Math.min(days, 999)).padStart(3, '0') + String(h).padStart(2, '0') + String(m).padStart(2, '0') + String(s).padStart(2, '0');
+      [...str].forEach((ch, i) => {
+        const v = +ch, c = cols[i]; if (v === c.v) return; c.v = v;
+        gsap.to(c.col, { yPercent: -v * 10, duration: first || reduce ? 0 : 0.9, ease: 'expo.out' });
+      });
+      clock.setAttribute('aria-label', `${days} dias, ${h} horas, ${m} minutos e ${s} segundos`);
+    }
+    tick(true); setInterval(tick, 1000);
+  }
+})();
+</script>
